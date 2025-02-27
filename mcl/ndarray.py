@@ -144,6 +144,28 @@ class Array[T]:
 
         self.data = self.data.view(new_shape, new_strides, self.data.offset)
 
+    def reshape(self, shape: tuple[intp, ...]) -> None:
+        # Check if this is a valid reshape
+        num_elems_orig = 1
+        for i in self.shape:
+            num_elems_orig *= i
+        num_elems_new = 1
+        for i in shape:
+            num_elems_new *= i
+        assert num_elems_orig == num_elems_new
+
+        orig_strides = self.strides
+        new_strides = [intp(0)] * len(shape)
+
+        raise NotImplementedError("Need to implement stride logic for reshaping")
+        for i in range(len(shape)):
+            new_strides[i] = orig_strides[i]
+
+        self.data = self.data.view(shape, new_strides, self.data.offset)
+
+    def transpose(self, axis: tuple[intp, ...] = None) -> None:
+        raise NotImplementedError("Transpose not supported")
+
     @classmethod
     def is_advanced(cls, idx: _Indices) -> bool:
         return any((isinstance(i, Array) and i.ndim > intp(0)) for i in idx)
