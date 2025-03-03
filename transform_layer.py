@@ -1,8 +1,9 @@
 
-from mcl.machine_types import intp
-from mcl.vm import Type
-from mcl.ndarray import Array, DType, Int32
+from mcl.machine_types import intp, f32, i32
+from mcl.ndarray import Array, DType, Float32, Int32
 import random
+import math
+from mcl.vm import _get_machine_value
 from mcl.array_math import array_exp, random_array, array_sum, array_max, array_matmul, array_sqrt
 
 def softmax(x, axis=-1):
@@ -28,7 +29,7 @@ def scaled_dot_product_attention(query, key, value):
 
     # Scale dot product attention
     d_k = query.shape[-1]
-    scores = array_matmul(Q, K.transpose((intp(0), intp(2), intp(1)))) / array_sqrt(d_k)
+    scores = array_matmul(Q, K.transpose((intp(0), intp(2), intp(1)))) / f32(math.sqrt(_get_machine_value(d_k)))
 
     # Get attention weights
     weights = softmax(scores, axis=-1)
@@ -95,11 +96,11 @@ class TransformerLayer:
 # Example usage
 random.seed(42)
 
-batch_size = intp(32)
-sequence_length = intp(50)
-embedding_dim = intp(128)
+batch_size = intp(8)
+sequence_length = intp(8)
+embedding_dim = intp(8)
 
-input_data: Array = random_array((batch_size, sequence_length, embedding_dim), DType(Int32))
+input_data: Array = random_array((batch_size, sequence_length, embedding_dim), DType(Float32))
 
 transformer_layer = TransformerLayer(num_heads=intp(8), embedding_dim=embedding_dim)
 

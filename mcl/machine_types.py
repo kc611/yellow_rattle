@@ -17,9 +17,39 @@ class i32:
         else:
             return NotImplemented
 
+    def __sub__(self, other) -> i32:
+        if type(other) is i32:
+            return machine_op("int_sub", i32, self, other)
+        else:
+            return NotImplemented
+
+    def __mul__(self, other) -> i32:
+        if type(other) is i32:
+            return machine_op("int_mul", i32, self, other)
+        else:
+            return NotImplemented
+
+    def __floordiv__(self, other) -> i32:
+        if type(other) is i32:
+            return machine_op("int_floordiv", i32, self, other)
+        else:
+            return NotImplemented
+
     def __eq__(self, other) -> bool:
         if type(other) is i32:
             return machine_op("int_eq", bool, self, other)
+        else:
+            return NotImplemented
+
+    def __lt__(self, other) -> bool:
+        if type(other) is i32:
+            return machine_op("int_lt", bool, self, other)
+        else:
+            return NotImplemented
+    
+    def __mod__(self, other) -> i32:
+        if type(other) is i32:
+            return machine_op("int_mod", i32, self, other)
         else:
             return NotImplemented
 
@@ -96,6 +126,58 @@ class intp:
     
     def __hash__(self):
         return hash(int(self))
+
+@machine_type(builtin=True, final=True)
+class f32:
+    __machine_repr__ = "f32"
+
+    def __add__(self, other) -> f32:
+        if type(other) is f32:
+            return machine_op("float_add", f32, self, other)
+        else:
+            return NotImplemented
+
+    def __sub__(self, other) -> f32:
+        if type(other) is f32:
+            return machine_op("float_sub", f32, self, other)
+        else:
+            return NotImplemented
+
+    def __mul__(self, other) -> f32:
+        if type(other) is f32:
+            return machine_op("float_mul", f32, self, other)
+        else:
+            return NotImplemented
+
+    def __floordiv__(self, other) -> f32:
+        if type(other) is f32:
+            return machine_op("float_floordiv", f32, self, other)
+        else:
+            return NotImplemented
+
+    def __truediv__(self, other) -> f32:
+        if type(other) is f32:
+            return machine_op("float_truediv", f32, self, other)
+        else:
+            return NotImplemented
+
+    def __eq__(self, other) -> bool:
+        if type(other) is f32:
+            return machine_op("float_eq", bool, self, other)
+        else:
+            return NotImplemented
+
+    def __lt__(self, other) -> bool:
+        if type(other) is f32:
+            return machine_op("float_lt", bool, self, other)
+        else:
+            return NotImplemented
+    
+    def __mod__(self, other) -> f32:
+        if type(other) is f32:
+            return machine_op("float_mod", f32, self, other)
+        else:
+            return NotImplemented
 
 
 @machine_type(builtin=True, final=True)

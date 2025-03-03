@@ -10,6 +10,7 @@ from __future__ import annotations
 import inspect
 import logging
 import operator
+import struct
 import typing as _tp
 from dataclasses import dataclass
 from functools import reduce, singledispatch
@@ -158,6 +159,42 @@ def _int_mod[T](opname: str, restype: _tp.Type[T], *args) -> T:
     return _cmpop(operator.mod, restype, *args)
 
 @_reg_op
+def _float_add[T](opname: str, restype: _tp.Type[T], *args) -> T:
+    return _binop(operator.add, restype, *args)
+
+
+@_reg_op
+def _float_sub[T](opname: str, restype: _tp.Type[T], *args) -> T:
+    return _binop(operator.sub, restype, *args)
+
+@_reg_op
+def _float_mul[T](opname: str, restype: _tp.Type[T], *args) -> T:
+    return _binop(operator.mul, restype, *args)
+
+
+@_reg_op
+def _float_floordiv[T](opname: str, restype: _tp.Type[T], *args) -> T:
+    return _binop(operator.floordiv, restype, *args)
+
+@_reg_op
+def _float_truediv[T](opname: str, restype: _tp.Type[T], *args) -> T:
+    return _binop(operator.truediv, restype, *args)
+
+
+@_reg_op
+def _float_eq[T](opname: str, restype: _tp.Type[T], *args) -> T:
+    return _cmpop(operator.eq, restype, *args)
+
+
+@_reg_op
+def _float_lt[T](opname: str, restype: _tp.Type[T], *args) -> T:
+    return _cmpop(operator.lt, restype, *args)
+
+@_reg_op
+def _float_mod[T](opname: str, restype: _tp.Type[T], *args) -> T:
+    return _cmpop(operator.mod, restype, *args)
+
+@_reg_op
 def _memref_alloc[T](opname: str, restype: _tp.Type[T], *args) -> T:
     [shape, typ] = args
     assert restype is _mt.memref
@@ -258,6 +295,8 @@ def _from_bytes[T](restype: _tp.Type[T], raw: bytes) -> T:
     match restype:
         case _mt.i32:
             return restype(int.from_bytes(raw, signed=True))
+        case _mt.f32:
+            return restype(struct.unpack("f", raw)[0])
         case _:
             raise TypeError(restype)
     raise AssertionError
@@ -269,6 +308,8 @@ def _to_bytes[T](value: T) -> bytes:
     match type(value):
         case _mt.i32:
             out = mv.to_bytes(4, signed=True)
+        case _mt.f32:
+            out = struct.pack("f", mv)
         case _:
             raise TypeError(f"invalid type {type(value)}")
 
@@ -278,6 +319,8 @@ def _to_bytes[T](value: T) -> bytes:
 def _sizeof(restype: _tp.Type) -> int:
     match restype:
         case _mt.i32:
+            out = 4
+        case _mt.f32:
             out = 4
         case _:
             raise TypeError(f"invalid type {restype}")

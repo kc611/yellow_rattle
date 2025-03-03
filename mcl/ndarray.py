@@ -3,7 +3,7 @@ from __future__ import annotations
 import typing as _tp
 
 from mcl.builtins import tuple_cast
-from mcl.machine_types import i32, intp, memref
+from mcl.machine_types import i32, intp, memref, f32
 from mcl.vm import struct_type
 from mcl.dialects import LoopNestAPI
 from mcl.vm import _get_machine_value
@@ -30,6 +30,9 @@ class Number(Generic):
 class Integer(Number):
     pass
 
+@struct_type()
+class Float(Number):
+    pass
 
 type _IntLike = int | intp
 type _Indices = tuple[_IntLike, ...] | _IntLike
@@ -47,6 +50,21 @@ class Int32(Integer):
         if type(other) is i32:
             return self.value == other
         elif isinstance(other, Int32):
+            return self.value == other.value
+        return NotImplemented
+
+@struct_type()
+class Float32(Float):
+    value: f32
+
+    @classmethod
+    def from_memory(cls, data: memref, index: tuple[intp, ...]) -> Float32:
+        return cls(value=data.load(index, f32))
+
+    def __eq__(self, other) -> bool:
+        if type(other) is f32:
+            return self.value == other
+        elif isinstance(other, Float32):
             return self.value == other.value
         return NotImplemented
 
@@ -124,6 +142,42 @@ class Array[T]:
             idx = tuple_cast(intp, idx)
             # TODO: There's no assertion that checks if idx is within bounds.
             return self.dtype.type.from_memory(self.data, idx)
+    
+    def __add__(self, other: Array[T]) -> Array[T]:
+        if isinstance(other, Array):
+            if self.shape != other.shape:
+                raise ValueError("Shapes do not match")
+            
+            for idx in LoopNestAPI.from_tuple(self.shape):
+                self[idx] = self[idx].value + other[idx].value
+        else:
+            for idx in LoopNestAPI.from_tuple(self.shape):
+                self[idx] = self[idx].value + other
+        return self
+
+    def __truediv__(self, other: Array[T]) -> Array[T]:
+        if isinstance(other, Array):
+            if self.shape != other.shape:
+                raise ValueError("Shapes do not match")
+            
+            for idx in LoopNestAPI.from_tuple(self.shape):
+                self[idx] = self[idx].value / other[idx].value
+        else:
+            for idx in LoopNestAPI.from_tuple(self.shape):
+                self[idx] = self[idx].value / other
+        return self
+
+    def __sub__(self, other: Array[T]) -> Array[T]:
+        if isinstance(other, Array):
+            if self.shape != other.shape:
+                raise ValueError("Shapes do not match")
+            
+            for idx in LoopNestAPI.from_tuple(self.shape):
+                self[idx] = self[idx].value - other[idx].value
+        else:
+            for idx in LoopNestAPI.from_tuple(self.shape):
+                self[idx] = self[idx].value - other
+        return self
 
     def broadcast_to(self, shape: tuple[intp, ...]) -> None:
         # This function can also serve as a assertion
