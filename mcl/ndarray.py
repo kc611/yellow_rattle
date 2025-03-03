@@ -6,6 +6,7 @@ from mcl.builtins import tuple_cast
 from mcl.machine_types import i32, intp, memref
 from mcl.vm import struct_type
 from mcl.dialects import LoopNestAPI
+from mcl.vm import _get_machine_value
 
 
 @struct_type()
@@ -144,27 +145,67 @@ class Array[T]:
 
         self.data = self.data.view(new_shape, new_strides, self.data.offset)
 
-    def reshape(self, shape: tuple[intp, ...]) -> None:
+    def reshape(self, shape: tuple[intp, ...], copy: bool=True) -> None:
         # Check if this is a valid reshape
-        num_elems_orig = 1
+        num_elems_orig = intp(1)
         for i in self.shape:
             num_elems_orig *= i
-        num_elems_new = 1
-        for i in shape:
-            num_elems_new *= i
-        assert num_elems_orig == num_elems_new
+        num_elems_new = intp(1)
+        has_neg_one = False
+        neg_one_idx = -1
+        for idx, i in enumerate(shape):
+            if i == intp(-1):
+                if has_neg_one:
+                    raise ValueError("Only one dimension can be -1")
+                has_neg_one = True
+                neg_one_idx = idx
+            else:
+                num_elems_new *= i
+        
+        if has_neg_one:
+            assert num_elems_orig % num_elems_new == intp(0), f"Cannot reshape array of shape {self.shape} to shape {shape}"
 
-        orig_strides = self.strides
+            shape = shape[:neg_one_idx] + (num_elems_orig // num_elems_new,) + shape[neg_one_idx + 1:]
+        else:
+            assert num_elems_orig == num_elems_new, f"Cannot reshape array of shape {self.shape} to shape {shape}"
+
         new_strides = [intp(0)] * len(shape)
 
-        raise NotImplementedError("Need to implement stride logic for reshaping")
-        for i in range(len(shape)):
-            new_strides[i] = orig_strides[i]
+        if copy:
+            self.data = self.data.copy()
+        
+        # TODO: Check if this logic is true
+        # If we are at this point, we can assume that the array is contiguous
+        # If it wasn't earlier the copy would have made it contiguous
+
+        # TODO: This should be intp(size_of_element) instead of 4
+        new_strides[-1] = intp(4)
+        
+        for i in range(len(shape) - 2, -1, -1):
+            new_strides[i] = new_strides[i + 1] * shape[i + 1]
 
         self.data = self.data.view(shape, new_strides, self.data.offset)
+        return self
 
     def transpose(self, axis: tuple[intp, ...] = None) -> None:
-        raise NotImplementedError("Transpose not supported")
+        # Check is axis is valid
+        if axis is None:
+            axis = tuple([intp(i) for i in range(self.ndim - 1, -1, -1)])
+
+        assert intp(len(axis)) == self.ndim
+        assert set(axis) == set([intp(i) for i in range(self.ndim)])
+
+        new_shape = [intp(0)] * self.ndim
+        new_strides = [intp(0)] * self.ndim
+
+        # These instances of get_machine_value needs to be removed
+        for i, j in enumerate(axis):
+            new_shape[i] = self.shape[_get_machine_value(j)]
+            new_strides[i] = self.strides[_get_machine_value(j)]
+
+        self.data = self.data.view(tuple(new_shape), tuple(new_strides), self.data.offset)
+
+        return self
 
     @classmethod
     def is_advanced(cls, idx: _Indices) -> bool:

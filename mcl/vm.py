@@ -153,6 +153,9 @@ def _int_eq[T](opname: str, restype: _tp.Type[T], *args) -> T:
 def _int_lt[T](opname: str, restype: _tp.Type[T], *args) -> T:
     return _cmpop(operator.lt, restype, *args)
 
+@_reg_op
+def _int_mod[T](opname: str, restype: _tp.Type[T], *args) -> T:
+    return _cmpop(operator.mod, restype, *args)
 
 @_reg_op
 def _memref_alloc[T](opname: str, restype: _tp.Type[T], *args) -> T:
@@ -442,7 +445,7 @@ class MemorySystem:
             datatype=datatype,
             itemsize=itemsize,
             size=size,
-            owner=memref.owner or memref,
+            owner=memref.handle(),
             offset=offset
         )
         self._viewmap.setdefault(memref, []).append(new_memref)
@@ -464,7 +467,7 @@ class MemorySystem:
         )
         # Copy the buffer
         # TODO: In case of a view, we don't need to copy the entire buffer
-        buffer = self._memmap[memref]
+        buffer = self._memmap[memref.handle()]
         self._memmap[new_memref] = buffer.copy()
         return new_memref
 

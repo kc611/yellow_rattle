@@ -22,13 +22,13 @@ def scaled_dot_product_attention(query, key, value):
         weights: (batch_size, sequence_length, sequence_length)
     """
     # Reshape for proper matrix multiplication
-    Q = query.reshape(-1, query.shape[1], query.shape[2])
-    K = key.reshape(-1, key.shape[1], key.shape[2])
-    V = value.reshape(-1, value.shape[1], value.shape[2])
+    Q = query.reshape((intp(-1), query.shape[1], query.shape[2]))
+    K = key.reshape((intp(-1), key.shape[1], key.shape[2]))
+    V = value.reshape((intp(-1), value.shape[1], value.shape[2]))
 
     # Scale dot product attention
     d_k = query.shape[-1]
-    scores = array_matmul(Q, K.transpose(0, 2, 1)) / array_sqrt(d_k)
+    scores = array_matmul(Q, K.transpose((intp(0), intp(2), intp(1)))) / array_sqrt(d_k)
 
     # Get attention weights
     weights = softmax(scores, axis=-1)
@@ -39,7 +39,7 @@ def scaled_dot_product_attention(query, key, value):
     return context.reshape(query.shape), weights
 
 class MultiHeadAttention:
-    def __init__(self, num_heads=8, embedding_dim=128):
+    def __init__(self, num_heads=intp(8), embedding_dim=intp(128)):
         self.num_heads = num_heads
         self.embedding_dim = embedding_dim
 
@@ -47,14 +47,14 @@ class MultiHeadAttention:
         """Split the last dimension into (heads, depth)"""
         batch_size = x.shape[0]
         sequence_length = x.shape[1]
-        x = x.reshape(batch_size, sequence_length, self.num_heads, -1)
-        return x.transpose((0, 2, 1, 3))
+        x = x.reshape((batch_size, sequence_length, self.num_heads, intp(-1)))
+        return x.transpose((intp(0), intp(2), intp(1), intp(3)))
 
     def combine_heads(self, x):
         """Combine heads dimension"""
         batch_size = x.shape[0]
         sequence_length = x.shape[2]
-        x = x.transpose((0, 2, 1, 3)).reshape(batch_size, sequence_length, -1)
+        x = x.transpose((intp(0), intp(2), intp(1), intp(3))).reshape(batch_size, sequence_length, intp(-1))
         return x
 
     def forward(self, query, key, value):
@@ -70,15 +70,15 @@ class MultiHeadAttention:
         return self.combine_heads(context), weights
 
 class FeedForwardNetwork:
-    def __init__(self, embedding_dim=128, hidden_dim=256):
-        self.W1 = random_array((embedding_dim, hidden_dim))
-        self.W2 = random_array((hidden_dim, embedding_dim))
+    def __init__(self, embedding_dim=intp(128), hidden_dim=intp(256)):
+        self.W1 = random_array((embedding_dim, hidden_dim), DType(Int32))
+        self.W2 = random_array((hidden_dim, embedding_dim), DType(Int32))
 
     def forward(self, x):
         return array_matmul(array_max(array_matmul(x, self.W1), 0), self.W2)
 
 class TransformerLayer:
-    def __init__(self, num_heads=8, embedding_dim=128, dropout=0.1):
+    def __init__(self, num_heads=intp(8), embedding_dim=intp(128), dropout=0.1):
         self.self_attn = MultiHeadAttention(num_heads, embedding_dim)
         self.feed_forward = FeedForwardNetwork(embedding_dim)
         self.dropout = dropout
@@ -101,7 +101,7 @@ embedding_dim = intp(128)
 
 input_data: Array = random_array((batch_size, sequence_length, embedding_dim), DType(Int32))
 
-transformer_layer = TransformerLayer(num_heads=8, embedding_dim=embedding_dim)
+transformer_layer = TransformerLayer(num_heads=intp(8), embedding_dim=embedding_dim)
 
 output = transformer_layer.forward(input_data)
 

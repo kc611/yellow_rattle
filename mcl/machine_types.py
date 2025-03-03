@@ -84,9 +84,18 @@ class intp:
             return machine_op("int_lt", bool, self, other)
         else:
             return NotImplemented
+    
+    def __mod__(self, other) -> intp:
+        if type(other) is intp:
+            return machine_op("int_mod", intp, self, other)
+        else:
+            return NotImplemented
 
     def __index__(self) -> int:
         return machine_op("cast", int, self)
+    
+    def __hash__(self):
+        return hash(int(self))
 
 
 @machine_type(builtin=True, final=True)
