@@ -100,7 +100,7 @@ def array_matmul(matrix_1: Array, matrix_2: Array):
     for idx in LoopNestAPI.from_tuple(result_shape):
         result_array[idx] = f32(0)
         for i in range(matrix_1.shape[-1]):
-            for j in range(matrix_2.shape[-2]):
-                result_array[idx] = result_array[idx].value + matrix_1[idx[:-1] + (i,)].value * matrix_2[idx[:-2] + (j, i)].value
+            for j in range(matrix_2.shape[-1]):
+                result_array[idx] = result_array[idx].value + matrix_1[idx[:-1] + (i,)].value * matrix_2[idx[:-2] + (i, j)].value
 
     return result_array
