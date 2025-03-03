@@ -145,9 +145,9 @@ class Array[T]:
     
     def __add__(self, other: Array[T]) -> Array[T]:
         if isinstance(other, Array):
-            if self.shape != other.shape:
-                raise ValueError("Shapes do not match")
-            
+            bdcast_shape = self.broadcast_shapes(self.shape, other.shape)
+            other.broadcast_to(bdcast_shape)
+
             for idx in LoopNestAPI.from_tuple(self.shape):
                 self[idx] = self[idx].value + other[idx].value
         else:
@@ -157,9 +157,9 @@ class Array[T]:
 
     def __truediv__(self, other: Array[T]) -> Array[T]:
         if isinstance(other, Array):
-            if self.shape != other.shape:
-                raise ValueError("Shapes do not match")
-            
+            bdcast_shape = self.broadcast_shapes(self.shape, other.shape)
+            other.broadcast_to(bdcast_shape)
+
             for idx in LoopNestAPI.from_tuple(self.shape):
                 self[idx] = self[idx].value / other[idx].value
         else:
@@ -169,9 +169,9 @@ class Array[T]:
 
     def __sub__(self, other: Array[T]) -> Array[T]:
         if isinstance(other, Array):
-            if self.shape != other.shape:
-                raise ValueError("Shapes do not match")
-            
+            bdcast_shape = self.broadcast_shapes(self.shape, other.shape)
+            other.broadcast_to(bdcast_shape)
+
             for idx in LoopNestAPI.from_tuple(self.shape):
                 self[idx] = self[idx].value - other[idx].value
         else:
@@ -226,7 +226,7 @@ class Array[T]:
         new_strides = [intp(0)] * len(shape)
 
         if copy:
-            self.data = self.data.copy()
+            self = self.copy()
         
         # TODO: Check if this logic is true
         # If we are at this point, we can assume that the array is contiguous
