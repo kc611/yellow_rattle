@@ -1,6 +1,6 @@
 
 from mcl.machine_types import intp, f32
-from mcl.ndarray import Array, DType, Float32
+from mcl.ndarray import Array
 import random
 import math
 from mcl.vm import _get_machine_value

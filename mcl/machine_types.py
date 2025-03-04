@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import typing as _tp
 
-from mcl.vm import machine_op, machine_type, struct_type
+from mcl.vm import machine_op, machine_type
 
 T = _tp.TypeVar("T")
 

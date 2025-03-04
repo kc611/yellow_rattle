@@ -13,7 +13,7 @@ import operator
 import struct
 import typing as _tp
 from dataclasses import dataclass
-from functools import reduce, singledispatch
+from functools import reduce
 
 from mcl import machine_types as _mt
 
@@ -330,6 +330,33 @@ def _memref_maximum[T](opname: str, restype: _tp.Type[T], *args) -> T:
     other_obj: MemRef = _get_machine_value(other)
     assert isinstance(_the_memsys, NumPyMemorySystem)
     new_memref = _the_memsys.apply_bin_op(memref, other_obj, np.maximum)
+    return restype(new_memref)
+
+@_reg_op
+def _memref_add[T](opname: str, restype: _tp.Type[T], *args) -> T:
+    [obj, other] = args
+    memref: MemRef = _get_machine_value(obj)
+    other_obj: MemRef = _get_machine_value(other)
+    assert isinstance(_the_memsys, NumPyMemorySystem)
+    new_memref = _the_memsys.apply_bin_op(memref, other_obj, operator.add)
+    return restype(new_memref)
+
+@_reg_op
+def _memref_truediv[T](opname: str, restype: _tp.Type[T], *args) -> T:
+    [obj, other] = args
+    memref: MemRef = _get_machine_value(obj)
+    other_obj: MemRef = _get_machine_value(other)
+    assert isinstance(_the_memsys, NumPyMemorySystem)
+    new_memref = _the_memsys.apply_bin_op(memref, other_obj, operator.truediv)
+    return restype(new_memref)
+
+@_reg_op
+def _memref_sub[T](opname: str, restype: _tp.Type[T], *args) -> T:
+    [obj, other] = args
+    memref: MemRef = _get_machine_value(obj)
+    other_obj: MemRef = _get_machine_value(other)
+    assert isinstance(_the_memsys, NumPyMemorySystem)
+    new_memref = _the_memsys.apply_bin_op(memref, other_obj, operator.sub)
     return restype(new_memref)
 
 @_reg_op
@@ -689,16 +716,21 @@ class NumPyMemorySystem:
             offset=memref.offset
         )
 
-        buffer = self._memmap[memref.handle()]
+        memref_owner = memref.handle()
+        if memref_owner != memref:
+            buffer = self._memmap[memref_owner]
 
-        new_buffer = np.zeros(memref.shape, dtype=buffer.dtype)
-        # Most time consuming operation, can be parallelized
-        for idx in np.ndindex(memref.shape):
-            flat_idx = sum(
-                i * int(s / memref.itemsize) for i, s in zip(idx, memref.strides, strict=True)
-            )
-            flat_idx += int(memref.offset / memref.itemsize)
-            new_buffer[idx] = buffer.flat[flat_idx]
+            new_buffer = np.zeros(memref.shape, dtype=buffer.dtype)
+            # Most time consuming operation, can be parallelized
+            for idx in np.ndindex(memref.shape):
+                flat_idx = sum(
+                    i * int(s / memref.itemsize) for i, s in zip(idx, memref.strides, strict=True)
+                )
+                flat_idx += int(memref.offset / memref.itemsize)
+                new_buffer[idx] = buffer.flat[flat_idx]
+        else:
+            new_buffer = self._memmap[memref_owner].copy()
+
         self._memmap[new_memref] = new_buffer
         return new_memref
 

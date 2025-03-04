@@ -4,7 +4,7 @@ import typing as _tp
 
 from mcl.builtins import tuple_cast
 from mcl.machine_types import i32, intp, memref, f32
-from mcl.vm import struct_type
+from mcl.vm import struct_type, machine_op
 from mcl.dialects import LoopNestAPI
 from mcl.vm import _get_machine_value
 
@@ -145,38 +145,26 @@ class Array[T]:
     
     def __add__(self, other: Array[T]) -> Array[T]:
         if isinstance(other, Array):
-            bdcast_shape = self.broadcast_shapes(self.shape, other.shape)
-            other.broadcast_to(bdcast_shape)
-
-            for idx in LoopNestAPI.from_tuple(self.shape):
-                self[idx] = self[idx].value + other[idx].value
+            other_memref = other.data
         else:
-            for idx in LoopNestAPI.from_tuple(self.shape):
-                self[idx] = self[idx].value + other
+            other_memref = to_scalar_array(other, self.dtype).data
+        machine_op("memref_add", memref, self.data, other_memref)
         return self
 
     def __truediv__(self, other: Array[T]) -> Array[T]:
         if isinstance(other, Array):
-            bdcast_shape = self.broadcast_shapes(self.shape, other.shape)
-            other.broadcast_to(bdcast_shape)
-
-            for idx in LoopNestAPI.from_tuple(self.shape):
-                self[idx] = self[idx].value / other[idx].value
+            other_memref = other.data
         else:
-            for idx in LoopNestAPI.from_tuple(self.shape):
-                self[idx] = self[idx].value / other
+            other_memref = to_scalar_array(other, self.dtype).data
+        machine_op("memref_truediv", memref, self.data, other_memref)
         return self
 
     def __sub__(self, other: Array[T]) -> Array[T]:
         if isinstance(other, Array):
-            bdcast_shape = self.broadcast_shapes(self.shape, other.shape)
-            other.broadcast_to(bdcast_shape)
-
-            for idx in LoopNestAPI.from_tuple(self.shape):
-                self[idx] = self[idx].value - other[idx].value
+            other_memref = other.data
         else:
-            for idx in LoopNestAPI.from_tuple(self.shape):
-                self[idx] = self[idx].value - other
+            other_memref = to_scalar_array(other, self.dtype).data
+        machine_op("memref_sub", memref, self.data, other_memref)
         return self
 
     def broadcast_to(self, shape: tuple[intp, ...]) -> None:
@@ -392,3 +380,8 @@ class Array[T]:
     @classmethod
     def random(cls, shape: tuple[intp, ...]) -> None:
         return Array(dtype=DType(Float32), data=memref.alloc_random(shape, f32))
+
+def to_scalar_array(data, dtype):
+    temp_memref = machine_op("memref_alloc", memref, (intp(1),), f32)
+    machine_op("memref_store", None, temp_memref, (i32(0),), data)
+    return Array(dtype=dtype, data=temp_memref)
