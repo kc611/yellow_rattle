@@ -188,6 +188,10 @@ class memref[T]:
     def alloc(cls, shape: tuple[intp, ...], type: _tp.Type[T]) -> memref[T]:
         return machine_op("memref_alloc", memref, shape, type)
 
+    @classmethod
+    def alloc_random(cls, shape: tuple[intp, ...], type: _tp.Type[T]) -> memref[T]:
+        return machine_op("memref_alloc_random", memref, shape, type)
+
     @property
     def shape(self) -> tuple[intp, ...]:
         return machine_op("memref_shape", tuple, self)

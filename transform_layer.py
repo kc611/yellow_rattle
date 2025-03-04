@@ -4,7 +4,7 @@ from mcl.ndarray import Array, DType, Float32
 import random
 import math
 from mcl.vm import _get_machine_value
-from mcl.array_math import array_exp, random_array, array_sum, array_max, array_matmul, array_maximum
+from mcl.array_math import array_exp, array_sum, array_max, array_matmul, array_maximum
 
 def softmax(x, axis=-1):
     """Compute softmax values for each sets of scores in x."""
@@ -72,8 +72,8 @@ class MultiHeadAttention:
 
 class FeedForwardNetwork:
     def __init__(self, embedding_dim=intp(128), hidden_dim=intp(256)):
-        self.W1 = random_array((embedding_dim, hidden_dim), DType(Float32))
-        self.W2 = random_array((hidden_dim, embedding_dim), DType(Float32))
+        self.W1 = Array.random((embedding_dim, hidden_dim))
+        self.W2 = Array.random((hidden_dim, embedding_dim))
 
     def forward(self, x):
         return array_matmul(array_maximum(array_matmul(x, self.W1), f32(0)), self.W2)
@@ -96,11 +96,11 @@ class TransformerLayer:
 # Example usage
 random.seed(42)
 
-batch_size = intp(8)
-sequence_length = intp(8)
-embedding_dim = intp(8)
+batch_size = intp(32)
+sequence_length = intp(50)
+embedding_dim = intp(128)
 
-input_data: Array = random_array((batch_size, sequence_length, embedding_dim), DType(Float32))
+input_data: Array = Array.random((batch_size, sequence_length, embedding_dim))
 
 transformer_layer = TransformerLayer(num_heads=intp(8), embedding_dim=embedding_dim)
 

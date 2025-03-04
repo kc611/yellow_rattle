@@ -388,3 +388,7 @@ class Array[T]:
         for idx in LoopNestAPI.from_tuple(self.shape):
             res.append(self[idx].value)
         print(res)
+
+    @classmethod
+    def random(cls, shape: tuple[intp, ...]) -> None:
+        return Array(dtype=DType(Float32), data=memref.alloc_random(shape, f32))
