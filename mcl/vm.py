@@ -213,7 +213,7 @@ def _memref_alloc_random[T](opname: str, restype: _tp.Type[T], *args) -> T:
 
     mv_shape = tuple(map(_get_machine_value, shape))
     memref = _the_memsys.alloc(mv_shape, typ)
-    numpy_random = np.random.random(mv_shape).astype(np.float32)
+    numpy_random = np.random.random(mv_shape).astype(_np_type(memref.datatype))
 
     _the_memsys.memcpy(memref, numpy_random.tobytes())
     return restype(memref)
@@ -361,6 +361,14 @@ def _memref_matmul[T](opname: str, restype: _tp.Type[T], *args) -> T:
     return restype(new_memref)
 
 @_reg_op
+def _memref_print[T](opname: str, restype: _tp.Type[T], *args) -> T:
+    [obj] = args
+    memref: MemRef = _get_machine_value(obj)
+    memref_copy = _the_memsys.copy(memref)
+    buffer = _the_memsys._memmap[memref_copy]
+    print(np.frombuffer(buffer, dtype=_np_type(memref.datatype)).reshape(memref.shape))
+
+@_reg_op
 def _tuple_cast[T](opname: str, restype: _tp.Type[T], *args) -> T:
     [resty, tup] = args
     assert issubclass(type(resty), BaseMachineType)
@@ -404,6 +412,17 @@ def _sizeof(restype: _tp.Type) -> int:
             out = 4
         case _mt.f32:
             out = 4
+        case _:
+            raise TypeError(f"invalid type {restype}")
+
+    return out
+
+def _np_type(restype: _tp.Type) -> _tp.Type:
+    match restype:
+        case _mt.i32:
+            out = np.int32
+        case _mt.f32:
+            out = np.float32
         case _:
             raise TypeError(f"invalid type {restype}")
 
@@ -622,21 +641,18 @@ class MemorySystem:
         return new_memref
 
     def apply_np_op(self, memref: MemRef, op):
-        assert memref.datatype is _mt.f32
         buffer = self._memmap[self.copy(memref)]
-        buffer = np.frombuffer(buffer, dtype=np.float32).reshape(memref.shape)
+        buffer = np.frombuffer(buffer, dtype=_np_type(memref.datatype)).reshape(memref.shape)
         res_array = op(buffer)
         new_memref = self.alloc(res_array.shape, memref.datatype)
         self.memcpy(new_memref, res_array.tobytes())
         return new_memref
 
     def apply_np_bin_op(self, memref_1: MemRef, memref_2: MemRef, op):
-        assert memref_1.datatype is _mt.f32
-        assert memref_2.datatype is _mt.f32
         buffer_1 = self._memmap[self.copy(memref_1)]
         buffer_2 = self._memmap[self.copy(memref_2)]
-        buffer_1 = np.frombuffer(buffer_1, dtype=np.float32).reshape(memref_1.shape)
-        buffer_2 = np.frombuffer(buffer_2, dtype=np.float32).reshape(memref_2.shape)
+        buffer_1 = np.frombuffer(buffer_1, dtype=_np_type(memref_1.datatype)).reshape(memref_1.shape)
+        buffer_2 = np.frombuffer(buffer_2, dtype=_np_type(memref_2.datatype)).reshape(memref_2.shape)
         res_array = op(buffer_1, buffer_2)
         new_memref = self.alloc(res_array.shape, memref_1.datatype)
         self.memcpy(new_memref, res_array.tobytes())

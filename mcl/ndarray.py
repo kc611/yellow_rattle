@@ -372,10 +372,7 @@ class Array[T]:
         return Array(dtype=self.dtype, data=self.data.copy())
 
     def print(self) -> None:
-        res = []
-        for idx in LoopNestAPI.from_tuple(self.shape):
-            res.append(self[idx].value)
-        print(res)
+        machine_op("memref_print", None, self.data)
 
     @classmethod
     def random(cls, shape: tuple[intp, ...]) -> None:
