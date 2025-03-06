@@ -210,12 +210,12 @@ def _memref_alloc_random[T](opname: str, restype: _tp.Type[T], *args) -> T:
     [shape, typ] = args
     assert restype is _mt.memref
     assert type(shape) is tuple
-    assert isinstance(_the_memsys, NumPyMemorySystem)
 
     mv_shape = tuple(map(_get_machine_value, shape))
     memref = _the_memsys.alloc(mv_shape, typ)
-    numpy_random = np.random.random(mv_shape)
-    _the_memsys.memset(memref, numpy_random)
+    numpy_random = np.random.random(mv_shape).astype(np.float32)
+
+    _the_memsys.memcpy(memref, numpy_random.tobytes())
     return restype(memref)
 
 @_reg_op
@@ -295,32 +295,28 @@ def _memref_copy[T](opname: str, restype: _tp.Type[T], *args) -> T:
 def _memref_exp[T](opname: str, restype: _tp.Type[T], *args) -> T:
     [obj] = args
     memref: MemRef = _get_machine_value(obj)
-    assert isinstance(_the_memsys, NumPyMemorySystem)
-    new_memref = _the_memsys.apply_op(memref, np.exp)
+    new_memref = _the_memsys.apply_np_op(memref, np.exp)
     return restype(new_memref)
 
 @_reg_op
 def _memref_sqrt[T](opname: str, restype: _tp.Type[T], *args) -> T:
     [obj] = args
     memref: MemRef = _get_machine_value(obj)
-    assert isinstance(_the_memsys, NumPyMemorySystem)
-    new_memref = _the_memsys.apply_op(memref, np.exp)
+    new_memref = _the_memsys.apply_np_op(memref, np.exp)
     return restype(new_memref)
 
 @_reg_op
 def _memref_sum[T](opname: str, restype: _tp.Type[T], *args) -> T:
     [obj, axis, keepdims] = args
     memref: MemRef = _get_machine_value(obj)
-    assert isinstance(_the_memsys, NumPyMemorySystem)
-    new_memref = _the_memsys.apply_op(memref, lambda x: np.sum(x, axis=_get_machine_value(axis), keepdims=_get_machine_value(keepdims)))
+    new_memref = _the_memsys.apply_np_op(memref, lambda x: np.sum(x, axis=_get_machine_value(axis), keepdims=_get_machine_value(keepdims)))
     return restype(new_memref)
 
 @_reg_op
 def _memref_max[T](opname: str, restype: _tp.Type[T], *args) -> T:
     [obj, axis, keepdims] = args
     memref: MemRef = _get_machine_value(obj)
-    assert isinstance(_the_memsys, NumPyMemorySystem)
-    new_memref = _the_memsys.apply_op(memref, lambda x: np.max(x, axis=_get_machine_value(axis), keepdims=_get_machine_value(keepdims)))
+    new_memref = _the_memsys.apply_np_op(memref, lambda x: np.max(x, axis=_get_machine_value(axis), keepdims=_get_machine_value(keepdims)))
     return restype(new_memref)
 
 @_reg_op
@@ -328,8 +324,7 @@ def _memref_maximum[T](opname: str, restype: _tp.Type[T], *args) -> T:
     [obj, other] = args
     memref: MemRef = _get_machine_value(obj)
     other_obj: MemRef = _get_machine_value(other)
-    assert isinstance(_the_memsys, NumPyMemorySystem)
-    new_memref = _the_memsys.apply_bin_op(memref, other_obj, np.maximum)
+    new_memref = _the_memsys.apply_np_bin_op(memref, other_obj, np.maximum)
     return restype(new_memref)
 
 @_reg_op
@@ -337,8 +332,7 @@ def _memref_add[T](opname: str, restype: _tp.Type[T], *args) -> T:
     [obj, other] = args
     memref: MemRef = _get_machine_value(obj)
     other_obj: MemRef = _get_machine_value(other)
-    assert isinstance(_the_memsys, NumPyMemorySystem)
-    new_memref = _the_memsys.apply_bin_op(memref, other_obj, operator.add)
+    new_memref = _the_memsys.apply_np_bin_op(memref, other_obj, operator.add)
     return restype(new_memref)
 
 @_reg_op
@@ -346,8 +340,7 @@ def _memref_truediv[T](opname: str, restype: _tp.Type[T], *args) -> T:
     [obj, other] = args
     memref: MemRef = _get_machine_value(obj)
     other_obj: MemRef = _get_machine_value(other)
-    assert isinstance(_the_memsys, NumPyMemorySystem)
-    new_memref = _the_memsys.apply_bin_op(memref, other_obj, operator.truediv)
+    new_memref = _the_memsys.apply_np_bin_op(memref, other_obj, operator.truediv)
     return restype(new_memref)
 
 @_reg_op
@@ -355,8 +348,7 @@ def _memref_sub[T](opname: str, restype: _tp.Type[T], *args) -> T:
     [obj, other] = args
     memref: MemRef = _get_machine_value(obj)
     other_obj: MemRef = _get_machine_value(other)
-    assert isinstance(_the_memsys, NumPyMemorySystem)
-    new_memref = _the_memsys.apply_bin_op(memref, other_obj, operator.sub)
+    new_memref = _the_memsys.apply_np_bin_op(memref, other_obj, operator.sub)
     return restype(new_memref)
 
 @_reg_op
@@ -365,8 +357,7 @@ def _memref_matmul[T](opname: str, restype: _tp.Type[T], *args) -> T:
     memref_mat_1: MemRef = _get_machine_value(mat_1)
     memref_mat_2: MemRef = _get_machine_value(mat_2)
 
-    assert isinstance(_the_memsys, NumPyMemorySystem)
-    new_memref = _the_memsys.apply_bin_op(memref_mat_1, memref_mat_2, np.matmul)
+    new_memref = _the_memsys.apply_np_bin_op(memref_mat_1, memref_mat_2, np.matmul)
     return restype(new_memref)
 
 @_reg_op
@@ -552,6 +543,13 @@ class MemorySystem:
         value_bytes = _to_bytes(value)
         buffer[offset : offset + len(value_bytes)] = value_bytes
 
+    def memcpy[
+        T
+    ](self, memref: MemRef, value_bytes: bytearray) -> None:
+        buffer = self._memmap[memref.handle()]
+        offset = memref.offset
+        buffer[offset : offset + len(value_bytes)] = value_bytes
+
     def read(self, memref: MemRef, indices: tuple[int, ...]) -> bytes:
         logging.debug("read %s indices=%s", memref, indices)
         buffer = self._memmap[memref.handle()]
@@ -589,164 +587,59 @@ class MemorySystem:
         self, 
         memref: MemRef
     ) -> MemRef:
-        
-        new_memref = MemRef(
-            shape=memref.shape,
-            strides=memref.strides,
-            datatype=memref.datatype,
-            itemsize=memref.itemsize,
-            size=memref.size,
-            owner=None,
-            offset=memref.offset
-        )
-        # Copy the buffer
-        # TODO: In case of a view, we don't need to copy the entire buffer
-        buffer = self._memmap[memref.handle()]
-        self._memmap[new_memref] = buffer.copy()
-        return new_memref
-
-class NumPyMemorySystem:
-    """The Memory System
-
-    To provide safe memory operation, all memory manipulation must go through
-    this class. No pointer arithmetic.
-    """
-
-    _memmap: dict[MemRef, bytearray]
-
-    def __init__(self):
-        self._memmap = {}
-        self._viewmap = {}
-
-    @classmethod
-    def _numpy_type(cls, restype: _tp.Type) -> int:
-        match restype:
-            case _mt.i32:
-                out = np.int32
-            case _mt.f32:
-                out = np.float32
-            case _:
-                raise TypeError(f"invalid type {restype}")
-        return out
-
-    def alloc(self, shape: tuple[int, ...], datatype: _tp.Type) -> MemRef:
-        itemsize = _sizeof(datatype)
-        nbytes = reduce(operator.mul, shape) * itemsize
-        assert nbytes != 0
-        # compute strides
-        strides = []
-        last = itemsize
-        for s in reversed(shape):
-            strides.append(last)
-            last *= s
-        strides.reverse()
-        assert last == nbytes
-        memref = MemRef(
-            shape=shape,
-            strides=tuple(strides),
-            datatype=datatype,
-            itemsize=itemsize,
-            size=nbytes,
-        )
-
-        buffer = np.zeros(shape, dtype=self._numpy_type(datatype))
-        self._memmap[memref] = buffer
-        return memref
-
-    def write[
-        T
-    ](self, memref: MemRef, indices: tuple[int, ...], value: T) -> None:
-        logging.debug("write %s indices=%s value=%s", memref, indices, value)
-        buffer = self._memmap[memref.handle()]
-        offset = sum(
-            i * int(s / memref.itemsize) for i, s in zip(indices, memref.strides, strict=True)
-        )
-        offset += int(memref.offset / memref.itemsize)
-        buffer.flat[offset] = _get_machine_value(value)
-
-    def memset[
-        T
-    ](self, memref: MemRef, values: np.ndarray) -> None:
-        buffer = self._memmap[memref.handle()]
-        assert buffer.shape == values.shape
-        buffer[...] = values
-
-    def read(self, memref: MemRef, indices: tuple[int, ...]) -> bytes:
-        logging.debug("read %s indices=%s", memref, indices)
-        buffer = self._memmap[memref.handle()]
-        offset = sum(
-            i * int(s / memref.itemsize) for i, s in zip(indices, memref.strides, strict=True)
-        )
-        offset += int(memref.offset / memref.itemsize)
-        value = buffer.flat[offset]
-        return value
-
-    def view(
-        self, 
-        memref: MemRef,
-        shape,
-        strides,
-        datatype,
-        itemsize,
-        size,
-        offset
-    ) -> MemRef:
-        new_memref = MemRef(
-            shape=shape,
-            strides=strides,
-            datatype=datatype,
-            itemsize=itemsize,
-            size=size,
-            owner=memref.handle(),
-            offset=offset
-        )
-        return new_memref
-
-    def copy(
-        self, 
-        memref: MemRef
-    ) -> MemRef:
-        new_memref = MemRef(
-            shape=memref.shape,
-            strides=memref.strides,
-            datatype=memref.datatype,
-            itemsize=memref.itemsize,
-            size=memref.size,
-            owner=None,
-            offset=memref.offset
-        )
-
         memref_owner = memref.handle()
         if memref_owner != memref:
-            buffer = self._memmap[memref_owner]
-
-            new_buffer = np.zeros(memref.shape, dtype=buffer.dtype)
-            # Most time consuming operation, can be parallelized
+            strides = []
+            last = memref_owner.itemsize
+            for s in reversed(memref.shape):
+                strides.append(last)
+                last *= s
+            strides.reverse()
+            assert last == memref.size
+            new_memref = MemRef(
+                shape=memref.shape,
+                strides=tuple(strides),
+                datatype=memref.datatype,
+                itemsize=memref.itemsize,
+                size=memref.size,
+                owner=None,
+                offset=0
+            )
+            self._memmap[new_memref] = bytearray(memref.size)
             for idx in np.ndindex(memref.shape):
-                flat_idx = sum(
-                    i * int(s / memref.itemsize) for i, s in zip(idx, memref.strides, strict=True)
-                )
-                flat_idx += int(memref.offset / memref.itemsize)
-                new_buffer[idx] = buffer.flat[flat_idx]
+                self.write(new_memref, idx, self.read(memref, idx))
         else:
-            new_buffer = self._memmap[memref_owner].copy()
-
-        self._memmap[new_memref] = new_buffer
+            new_memref = MemRef(
+                shape=memref.shape,
+                strides=memref.strides,
+                datatype=memref.datatype,
+                itemsize=memref.itemsize,
+                size=memref.size,
+                owner=None,
+                offset=memref.offset
+            )
+            self._memmap[new_memref] = self._memmap[memref_owner].copy()
         return new_memref
 
-    def apply_op(self, memref: MemRef, op):
+    def apply_np_op(self, memref: MemRef, op):
+        assert memref.datatype is _mt.f32
         buffer = self._memmap[self.copy(memref)]
+        buffer = np.frombuffer(buffer, dtype=np.float32).reshape(memref.shape)
         res_array = op(buffer)
         new_memref = self.alloc(res_array.shape, memref.datatype)
-        self.memset(new_memref, res_array)
+        self.memcpy(new_memref, res_array.tobytes())
         return new_memref
 
-    def apply_bin_op(self, memref_1: MemRef, memref_2: MemRef, op):
+    def apply_np_bin_op(self, memref_1: MemRef, memref_2: MemRef, op):
+        assert memref_1.datatype is _mt.f32
+        assert memref_2.datatype is _mt.f32
         buffer_1 = self._memmap[self.copy(memref_1)]
         buffer_2 = self._memmap[self.copy(memref_2)]
+        buffer_1 = np.frombuffer(buffer_1, dtype=np.float32).reshape(memref_1.shape)
+        buffer_2 = np.frombuffer(buffer_2, dtype=np.float32).reshape(memref_2.shape)
         res_array = op(buffer_1, buffer_2)
         new_memref = self.alloc(res_array.shape, memref_1.datatype)
-        self.memset(new_memref, res_array)
+        self.memcpy(new_memref, res_array.tobytes())
         return new_memref
 
-_the_memsys = NumPyMemorySystem()
+_the_memsys = MemorySystem()
