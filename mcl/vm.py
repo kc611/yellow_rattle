@@ -13,8 +13,16 @@ import operator
 import typing as _tp
 from dataclasses import dataclass
 from functools import reduce, singledispatch
+from copy import copy
 
 from mcl import machine_types as _mt
+from mlir.ir import Context, Location, Module, F32Type, InsertionPoint, IntegerType
+import mlir.dialects.arith as arith
+import mlir.dialects.func as func
+import mlir.dialects.math as math
+
+import mlir.passmanager as passmanager
+
 
 
 @dataclass(frozen=True)
@@ -59,6 +67,31 @@ class BaseMachineType(Type):
     def get_machine_value(cls, obj):
         return obj.__value
 
+
+def mcl_lower(function):
+
+    def wrap(*args):
+
+        with Context() as ctx, Location.unknown():
+            module = Module.create()
+            i32 = IntegerType.get_signless(32)
+            i64 = IntegerType.get_signless(64)
+
+            with InsertionPoint(module.body), Location.name("start"):
+                fun = func.FuncOp("func", ([i32, i32], [i32]))
+                entry = fun.add_entry_block()
+                with InsertionPoint(entry):
+                    new_args = [arg.__class__(fun_arg) for arg, fun_arg in zip(args, fun.arguments)]
+                    ret_val = function(*new_args)
+                    ret = func.ReturnOp([_get_machine_value(ret_val)])
+
+        ret = (str(module))
+        # TODO: Check for correctness using passmanager
+        print(ret)
+        return ret
+        
+
+    return wrap
 
 def _make_machine_type_methods(ns: dict) -> dict:
     def m__repr__(self):
@@ -126,12 +159,12 @@ def _cmpop[T](op, restype: _tp.Type[T], *args) -> T:
 
 @_reg_op
 def _int_add[T](opname: str, restype: _tp.Type[T], *args) -> T:
-    return _binop(operator.add, restype, *args)
+    return _binop(arith.addi, restype, *args)
 
 
 @_reg_op
 def _int_sub[T](opname: str, restype: _tp.Type[T], *args) -> T:
-    return _binop(operator.sub, restype, *args)
+    return _binop(arith.subi, restype, *args)
 
 
 @_reg_op

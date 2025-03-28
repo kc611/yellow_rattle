@@ -17,6 +17,12 @@ class i32:
         else:
             return NotImplemented
 
+    def __sub__(self, other) -> i32:
+        if type(other) is i32:
+            return machine_op("int_sub", i32, self, other)
+        else:
+            return NotImplemented
+
     def __eq__(self, other) -> bool:
         if type(other) is i32:
             return machine_op("int_eq", bool, self, other)
