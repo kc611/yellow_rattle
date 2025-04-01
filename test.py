@@ -5,8 +5,6 @@ from mcl.machine_types import i32, i64, intp, memref
 from mcl.vm import Type, mcl_lower
 from mcl.ndarray import Array, DType, Int32
 
-
-
 def test_i32():
     a = i32(321)
     b = i32(123)
@@ -15,24 +13,36 @@ def test_i32():
     assert not issubclass(type(a), Type) # metaclass not subclass
     assert type(a).__mcl_type_descriptor__.machine_repr == "i32"
 
-    @mcl_lower
+    @mcl_lower(input_types=[i32, i32], output_types=[i32, i32])
     def foo(a, b):
         c = a + b
         d = a - b
-        e = c + d
-        return e
+        return c, d
 
-    mlir = foo(a, b)
-    # out = foo(a, b) == i32(444)
-    # assert isinstance(out, bool)
-    # assert out
+    output = foo(a, b)
 
-# def test_i64():
-#     a = i32(123)
-#     b = i64(321)
+    out = foo(a, b) == i32(444)
+    assert isinstance(out, bool)
+    assert out
 
-#     c = b + i64(a)
-#     assert c == i64(444)
+def test_i64():
+    a = i64(321)
+    b = i64(123)
+
+    assert not isinstance(a, Type)
+    assert not issubclass(type(a), Type) # metaclass not subclass
+    assert type(a).__mcl_type_descriptor__.machine_repr == "i64"
+
+    @mcl_lower(input_types=[i64, i64], output_types=[i64])
+    def foo(a, b):
+        c = a + b
+        return c
+
+    output = foo(a, b)
+    print(output)
+    out = foo(a, b) == i64(444)
+    assert isinstance(out, bool)
+    assert out
 
 
 # def test_final():

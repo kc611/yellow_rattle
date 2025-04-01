@@ -14,16 +14,22 @@ import typing as _tp
 from dataclasses import dataclass
 from functools import reduce, singledispatch
 from copy import copy
+from inspect import signature
 
 from mcl import machine_types as _mt
-from mlir.ir import Context, Location, Module, F32Type, InsertionPoint, IntegerType
+from mlir.ir import Context, Location, Module, F32Type, InsertionPoint, IntegerType, F64Type
 import mlir.dialects.arith as arith
 import mlir.dialects.func as func
 import mlir.dialects.math as math
 
 import mlir.passmanager as passmanager
-
-
+import mlir.execution_engine as execution_engine
+import mlir.runtime as runtime
+import mlir.rewrite as rewrite
+import mlir.extras as extras
+import mlir._mlir_libs as mlir_libs
+import mlir.ir as ir
+import mlir.dialects as dialects
 
 @dataclass(frozen=True)
 class TypeDescriptor:
@@ -68,30 +74,73 @@ class BaseMachineType(Type):
         return obj.__value
 
 
-def mcl_lower(function):
+def get_exec_ptr_from_mcl_value(mcl_value):
+    if isinstance(mcl_value, _mt.i32):
+        return execution_engine.ctypes.pointer(execution_engine.ctypes.c_int32(_get_machine_value(mcl_value)))
+    elif isinstance(mcl_value, _mt.i64):
+        return execution_engine.ctypes.pointer(execution_engine.ctypes.c_int64(_get_machine_value(mcl_value)))
 
-    def wrap(*args):
+def mcl_lower(input_types, output_types):
 
+    assert len(output_types) == 1, "Only one return value supported"
+
+    def inner_wrap(function):
         with Context() as ctx, Location.unknown():
             module = Module.create()
+            f32 = F32Type.get()
+            f64 = F64Type.get()
             i32 = IntegerType.get_signless(32)
             i64 = IntegerType.get_signless(64)
 
-            with InsertionPoint(module.body), Location.name("start"):
-                fun = func.FuncOp("func", ([i32, i32], [i32]))
+            def get_mlir_type_from_mcl_type(mcl_type):
+                match mcl_type:
+                    case _mt.i32:
+                        return i32
+                    case _mt.i64:
+                        return i64
+
+            mlir_func_input = [get_mlir_type_from_mcl_type(ty) for ty in input_types]
+            mlir_func_output = [get_mlir_type_from_mcl_type(ty) for ty in output_types]
+
+            with InsertionPoint(module.body), Location.unknown():
+                fun = func.FuncOp("func", (mlir_func_input, mlir_func_output))
                 entry = fun.add_entry_block()
                 with InsertionPoint(entry):
-                    new_args = [arg.__class__(fun_arg) for arg, fun_arg in zip(args, fun.arguments)]
+                    new_args = [arg(fun_arg) for arg, fun_arg in zip(input_types, fun.arguments)]
                     ret_val = function(*new_args)
-                    ret = func.ReturnOp([_get_machine_value(ret_val)])
+                    if not isinstance(ret_val, tuple):
+                        ret_val = (ret_val,)
+                    ret = func.ReturnOp([_get_machine_value(val) for val in ret_val])
+                fun.attributes["llvm.emit_c_interface"] = ir.UnitAttr.get()
 
-        ret = (str(module))
-        # TODO: Check for correctness using passmanager
-        print(ret)
-        return ret
-        
+            module.dump(
 
-    return wrap
+            )
+            pass_man = passmanager.PassManager()
+            pass_man.add("convert-func-to-llvm")
+            pass_man.enable_verifier(True)
+            pass_man.run(module.operation)
+            module.dump()
+
+            output_args = [ty(0) for ty in output_types]
+            engine = execution_engine.ExecutionEngine(module)
+            res_ptrs = [get_exec_ptr_from_mcl_value(val) for val in output_args]
+
+            def wrap(*input_args):
+                assert len(input_args) == len(input_types)
+                for arg, arg_ty in zip(input_args, input_types):
+                    assert isinstance(arg, arg_ty)              
+                input_exec_ptrs = [get_exec_ptr_from_mcl_value(ty) for ty in input_args]
+                engine.invoke("func", *input_exec_ptrs, *res_ptrs)
+                outs = tuple([output_types[i](res_ptrs[i].contents.value) for i in range(len(output_types))])
+                if len(outs) == 1:
+                    return outs[0]
+                else:
+                    return outs
+                
+            return wrap
+
+    return inner_wrap
 
 def _make_machine_type_methods(ns: dict) -> dict:
     def m__repr__(self):
